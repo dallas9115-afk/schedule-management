@@ -1,8 +1,10 @@
 package com.example.schedulemanagement.service;
 
+import com.example.schedulemanagement.dto.CommentResponseDto;
 import com.example.schedulemanagement.dto.ScheduleRequestDto;
 import com.example.schedulemanagement.dto.ScheduleResponseDto;
 import com.example.schedulemanagement.entity.Schedule;
+import com.example.schedulemanagement.repository.CommentRepository;
 import com.example.schedulemanagement.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,8 +17,10 @@ import java.util.List;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+    private final CommentRepository commentRepository;
 
-    public final ScheduleResponseDto createSchedule(ScheduleRequestDto requestDto) {
+    public ScheduleResponseDto createSchedule(ScheduleRequestDto requestDto) {
+        validateInput(requestDto); // 유효값 검사 먼저 수행
         Schedule schedule = new Schedule(requestDto);
         Schedule savedSchedule = scheduleRepository.save(schedule);
         return new ScheduleResponseDto(savedSchedule);
@@ -26,7 +30,13 @@ public class ScheduleService {
     public ScheduleResponseDto getSchedule(Long id) {
         Schedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("선택한 일정이 없습니다."));
-        return new ScheduleResponseDto(schedule);
+
+        List<CommentResponseDto> commentList = commentRepository.findAllByScheduleIdOrderByModifiedAtDesc(id)
+                .stream()
+                .map(CommentResponseDto::new)
+                .toList();
+
+        return new ScheduleResponseDto(schedule, commentList);
     }
     // id 기준으로 찾은 후 있으면 반환, 없으면 에러 throw
 
@@ -41,6 +51,7 @@ public class ScheduleService {
     // 일정 수정 기능 구현
     @Transactional
     public ScheduleResponseDto updateSchedule(Long id, ScheduleRequestDto requestDto){
+        validateInput(requestDto);
         //해당 일정이 있는지 확인하고, 없으면 에러 반환
         Schedule schedule = findSchedule(id);
 
@@ -76,4 +87,33 @@ public class ScheduleService {
                 new IllegalArgumentException("선택한 일정이 없습니다.")
         );
     }
+
+    private void validateInput(ScheduleRequestDto requestDto) {
+        // 1. 제목 검증 (필수 + 30자 제한)
+        if (requestDto.getTitle() == null || requestDto.getTitle().trim().isEmpty()) {
+            throw new IllegalArgumentException("제목은 필수값입니다.");
+        }
+        if (requestDto.getTitle().length() > 30) {
+            throw new IllegalArgumentException("제목은 최대 30자까지 입력 가능합니다.");
+        }
+
+        // 2. 내용 검증 (필수 + 200자 제한)
+        if (requestDto.getContents() == null || requestDto.getContents().trim().isEmpty()) {
+            throw new IllegalArgumentException("내용은 필수값입니다.");
+        }
+        if (requestDto.getContents().length() > 200) {
+            throw new IllegalArgumentException("내용은 최대 200자까지 입력 가능합니다.");
+        }
+
+        // 3. 작성자 검증 (필수)
+        if (requestDto.getAuthor() == null || requestDto.getAuthor().trim().isEmpty()) {
+            throw new IllegalArgumentException("작성자는 필수값입니다.");
+        }
+
+        // 4. 비밀번호 검증 (필수)
+        if (requestDto.getPassword() == null || requestDto.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("비밀번호는 필수값입니다.");
+        }
+    }
+
 }
