@@ -21,4 +21,20 @@ public class ScheduleService {
         Schedule savedSchedule = scheduleRepository.save(schedule);
         return new ScheduleResponseDto(savedSchedule);
     } // 생성자 및 메서드 호출과 동일
+
+    // 선택 일정 조회 기능 구현
+    public ScheduleResponseDto getSchedule(Long id) {
+        Schedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("선택한 일정이 없습니다."));
+        return new ScheduleResponseDto(schedule);
+    }
+    // id 기준으로 찾은 후 있으면 반환, 없으면 에러 throw
+
+    // 전체 일정 조회 기능 구현
+    public List<ScheduleResponseDto> getSchedules() {
+        return scheduleRepository.findAllByOrderByModifiedAtDesc().stream()
+                .map(ScheduleResponseDto::new)
+                .toList();
+    }
+    // 수정일 순으로 모든 성분을 가져와 stream에 넣고, DTO의 형태에 맞춰 넣음
 }
